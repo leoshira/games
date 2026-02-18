@@ -32,9 +32,9 @@
         .scroll-area::-webkit-scrollbar { width: 6px; }
         .scroll-area::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 3px; }
         .scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
-        .scroll-area.lure-area { max-height: calc(100vh - 200px); }
-        .scroll-area.spot-area { max-height: calc(100vh - 150px); }
-        .scroll-area.style-area { max-height: calc(100vh - 180px); }
+        .scroll-area.lure-area { max-height: calc(100vh - 240px); }
+        .scroll-area.spot-area { max-height: calc(100vh - 200px); }
+        .scroll-area.style-area { max-height: calc(100vh - 220px); }
 
         .category-header {
             font-size: 1.1em; font-weight: bold; color: #FFD700;
@@ -143,9 +143,9 @@
             .hit-text { font-size: 3em; }
             .gauge { width: 25px; height: 200px; }
             .instructions { font-size: 14px; }
-            .scroll-area.lure-area { max-height: calc(100vh - 170px); }
-            .scroll-area.spot-area { max-height: calc(100vh - 130px); }
-            .scroll-area.style-area { max-height: calc(100vh - 150px); }
+            .scroll-area.lure-area { max-height: calc(100vh - 220px); }
+            .scroll-area.spot-area { max-height: calc(100vh - 180px); }
+            .scroll-area.style-area { max-height: calc(100vh - 200px); }
         }
     </style>
 </head>
@@ -160,28 +160,28 @@
     </div>
 
     <!-- 釣り場選択画面 -->
-    <div id="spotScreen" class="hidden">
-        <h1 style="font-size:1.8em; margin-bottom:8px;">🗺️ 釣り場を選ぶ</h1>
-        <div class="scroll-area spot-area" id="spotList"></div>
-        <button class="start-button" onclick="showStyleSelect()">次へ → スタイル選択</button>
+    <div id="spotScreen" class="hidden" style="display:flex;flex-direction:column;padding:10px 15px;">
+        <h1 style="font-size:1.8em; margin-bottom:8px; flex-shrink:0;">🗺️ 釣り場を選ぶ</h1>
+        <div class="scroll-area spot-area" id="spotList" style="flex:1;overflow-y:auto;min-height:0;"></div>
+        <button class="start-button" onclick="showStyleSelect()" style="flex-shrink:0;margin-top:8px;">次へ → スタイル選択</button>
     </div>
 
     <!-- 釣りスタイル選択画面 -->
-    <div id="styleScreen" class="hidden">
-        <h1 style="font-size:1.8em; margin-bottom:5px;">🚤 釣りスタイルを選ぶ</h1>
-        <p id="styleSpotLabel" style="font-size:0.9em; opacity:0.7; margin-bottom:8px;">📍 湖</p>
-        <div class="scroll-area style-area" id="styleList"></div>
-        <button class="start-button" onclick="showLureSelect()">次へ → ルアー選択</button>
-        <button class="back-button" onclick="backFromStyle()">← 釣り場に戻る</button>
+    <div id="styleScreen" class="hidden" style="display:flex;flex-direction:column;padding:10px 15px;">
+        <h1 style="font-size:1.8em; margin-bottom:5px; flex-shrink:0;">🚤 釣りスタイルを選ぶ</h1>
+        <p id="styleSpotLabel" style="font-size:0.9em; opacity:0.7; margin-bottom:8px; flex-shrink:0;">📍 湖</p>
+        <div class="scroll-area style-area" id="styleList" style="flex:1;overflow-y:auto;min-height:0;"></div>
+        <button class="start-button" onclick="showLureSelect()" style="flex-shrink:0;margin-top:8px;">次へ → ルアー選択</button>
+        <button class="back-button" onclick="backFromStyle()" style="flex-shrink:0;">← 釣り場に戻る</button>
     </div>
 
     <!-- ルアー選択画面 -->
-    <div id="lureScreen" class="hidden">
-        <h1 style="font-size:1.8em; margin-bottom:3px;">🎣 ルアーを選ぶ</h1>
-        <p id="lureSpotLabel" style="font-size:0.9em; opacity:0.7; margin-bottom:6px;">📍 湖 / 🚶 オカッパリ</p>
-        <div class="scroll-area lure-area" id="lureList"></div>
-        <button class="start-button" onclick="startFishing()">🐟 Start Fishing!</button>
-        <button class="back-button" onclick="backFromLure()">← スタイルに戻る</button>
+    <div id="lureScreen" class="hidden" style="display:flex;flex-direction:column;padding:10px 15px;">
+        <h1 style="font-size:1.8em; margin-bottom:3px; flex-shrink:0;">🎣 ルアーを選ぶ</h1>
+        <p id="lureSpotLabel" style="font-size:0.9em; opacity:0.7; margin-bottom:6px; flex-shrink:0;">📍 湖 / 🚶 オカッパリ</p>
+        <div class="scroll-area lure-area" id="lureList" style="flex:1;overflow-y:auto;min-height:0;"></div>
+        <button class="start-button" onclick="startFishing()" style="flex-shrink:0;margin-top:8px;">🐟 Start Fishing!</button>
+        <button class="back-button" onclick="backFromLure()" style="flex-shrink:0;">← スタイルに戻る</button>
     </div>
 
     <!-- ゲーム画面 -->
