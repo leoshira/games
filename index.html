@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leo's Games 🎮</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Arial',sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+h1{font-size:2.5em;margin-bottom:.5em;color:#FFD700;text-shadow:2px 2px 4px rgba(0,0,0,.5)}
+.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5em;padding:2em;max-width:900px;width:100%}
+.card{background:rgba(255,255,255,.08);border-radius:16px;padding:2em;text-align:center;text-decoration:none;color:#fff;transition:transform .2s,box-shadow .2s;border:1px solid rgba(255,255,255,.1)}
+.card:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(0,0,0,.3);border-color:rgba(255,215,0,.3)}
+.card .emoji{font-size:4em;margin-bottom:.3em}
+.card h2{font-size:1.3em;margin-bottom:.3em;color:#FFD700}
+.card p{font-size:.9em;opacity:.7}
+</style>
+</head>
+<body>
+<h1>🎮 Leo's Games</h1>
+<div class="games">
+<a class="card" href="fishing/">
+<div class="emoji">🎣</div>
+<h2>BASS FISHING 3D</h2>
+<p>12の釣り場 × 13種のルアー × 10種の魚<br>リアルな3Dバス釣りゲーム</p>
+</a>
+</div>
+</body>
+</html>

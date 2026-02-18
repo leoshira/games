@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BASS FISHING 3D 🎣</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white; overflow: hidden; height: 100vh;
+        }
+        #gameContainer { width: 100vw; height: 100vh; position: relative; }
+
+        #menuScreen, #spotScreen, #styleScreen, #lureScreen, #gameScreen, #fightScreen, #resultScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100;
+        }
+        .hidden { display: none !important; }
+
+        h1 { font-size: 3em; margin-bottom: 0.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); color: #FFD700; }
+        h2 { color: #FFD700; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+
+        /* Scroll areas */
+        .scroll-area {
+            flex: 1 1 auto; overflow-y: auto; width: 100%; max-width: 680px;
+            padding: 0 10px 10px 10px; -webkit-overflow-scrolling: touch;
+        }
+        .scroll-area::-webkit-scrollbar { width: 6px; }
+        .scroll-area::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        .scroll-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+        .scroll-area.lure-area { max-height: calc(100vh - 200px); }
+        .scroll-area.spot-area { max-height: calc(100vh - 150px); }
+        .scroll-area.style-area { max-height: calc(100vh - 180px); }
+
+        .category-header {
+            font-size: 1.1em; font-weight: bold; color: #FFD700;
+            margin: 14px 0 8px 0; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+            border-bottom: 1px solid rgba(255,215,0,0.3); padding-bottom: 4px;
+        }
+
+        /* Selection grids */
+        .sel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px; }
+        .sel-grid.grid-1 { grid-template-columns: 1fr; }
+
+        /* Generic selection button */
+        .sel-btn {
+            background: linear-gradient(135deg, rgba(30,60,114,0.85), rgba(42,82,152,0.85));
+            border: 2px solid rgba(255,215,0,0.2); padding: 12px 10px; border-radius: 12px;
+            color: white; cursor: pointer; font-size: 13px; transition: all 0.2s ease;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3); text-align: left; line-height: 1.4;
+        }
+        .sel-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 12px rgba(0,0,0,0.4); border-color: rgba(255,215,0,0.5); }
+        .sel-btn.selected { background: linear-gradient(135deg, #1a5276, #2471a3); border-color: #FFD700; box-shadow: 0 0 12px rgba(255,215,0,0.3); }
+        .sel-btn.disabled { opacity: 0.35; pointer-events: none; filter: grayscale(0.6); }
+        .sel-btn .sel-icon { font-size: 24px; }
+        .sel-btn .sel-name { font-weight: bold; font-size: 15px; color: #FFD700; }
+        .sel-btn .sel-rec { font-size: 11px; color: #87ceeb; margin-top: 3px; }
+
+        /* Lure button (green variant) */
+        .lure-btn {
+            background: linear-gradient(45deg, #3a7c44, #2d6e36);
+            border: 2px solid transparent; padding: 10px 8px; border-radius: 10px;
+            color: white; cursor: pointer; font-size: 13px; transition: all 0.2s ease;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3); text-align: left; line-height: 1.35;
+        }
+        .lure-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 10px rgba(0,0,0,0.4); border-color: rgba(255,255,255,0.3); }
+        .lure-btn.selected { background: linear-gradient(45deg, #FF6B35, #F7931E); transform: scale(1.03); border-color: #FFD700; }
+        .lure-btn .lure-name { font-weight: bold; font-size: 14px; }
+        .lure-btn small { opacity: 0.85; }
+        .lure-btn .bonus-tag { display: inline-block; background: #FFD700; color: #333; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 4px; margin-left: 4px; }
+
+        .start-button {
+            background: linear-gradient(45deg, #FF6B35, #F7931E); border: none;
+            padding: 14px 30px; border-radius: 25px; color: white; font-size: 18px; font-weight: bold;
+            cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            margin: 12px 0 8px 0; flex-shrink: 0;
+        }
+        .start-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.4); }
+
+        .back-button {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 20px; border-radius: 15px; color: white; font-size: 14px;
+            cursor: pointer; margin-bottom: 12px; flex-shrink: 0; transition: all 0.2s;
+        }
+        .back-button:hover { background: rgba(255,255,255,0.25); }
+
+        /* Game UI */
+        #threeCanvas { position: absolute; top: 0; left: 0; z-index: 1; }
+        .game-ui { position: absolute; top: 20px; left: 20px; z-index: 50; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); }
+        .instructions { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50; text-align: center; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); }
+
+        .hit-text {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 200; font-size: 5em; font-weight: bold; color: #FF0000;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8); animation: hitPulse 1s ease-in-out; display: none;
+        }
+        @keyframes hitPulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .gauge-container { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); z-index: 50; }
+        .gauge { width: 30px; height: 300px; border: 3px solid white; border-radius: 15px; margin-bottom: 20px; overflow: hidden; background: rgba(0,0,0,0.3); position: relative; }
+        .gauge-fill { width: 100%; transition: height 0.2s ease; border-radius: 12px; position: absolute; bottom: 0; }
+        .tension-gauge .gauge-fill { background: linear-gradient(to top, #4CAF50, #FFC107, #FF5722); }
+        .health-gauge .gauge-fill { background: linear-gradient(to top, #FF5722, #FFC107, #4CAF50); }
+
+        .result-fish { text-align: center; margin-bottom: 20px; }
+        .fish-species { font-size: 1.3em; margin: 8px 0; }
+        .fish-species.rare { color: #FFD700; text-shadow: 0 0 10px #FFD700, 0 0 20px #FFA500; animation: rareGlow 1s ease-in-out infinite alternate; }
+        @keyframes rareGlow { from { text-shadow: 0 0 10px #FFD700, 0 0 20px #FFA500; } to { text-shadow: 0 0 20px #FFD700, 0 0 40px #FFA500, 0 0 60px #FF6B35; } }
+        .fish-stats { font-size: 1.5em; margin: 10px 0; color: #FFD700; }
+        .action-buttons { display: flex; gap: 20px; }
+        .action-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049); border: none;
+            padding: 12px 24px; border-radius: 20px; color: white; font-size: 16px;
+            cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .action-button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.4); }
+
+        /* Snag overlay */
+        .snag-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 300;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.5);
+        }
+        .snag-overlay .snag-text { font-size: 2.5em; font-weight: bold; color: #ff4444; text-shadow: 2px 2px 6px rgba(0,0,0,0.8); }
+        .snag-overlay .snag-hint { font-size: 1.2em; color: white; margin-top: 10px; }
+        .snag-overlay .snag-bar { width: 200px; height: 20px; border: 2px solid white; border-radius: 10px; overflow: hidden; margin-top: 15px; background: rgba(0,0,0,0.4); }
+        .snag-overlay .snag-fill { height: 100%; background: linear-gradient(90deg, #ff4444, #ffaa00, #44ff44); transition: width 0.1s; width: 0%; }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2em; }
+            .sel-grid, .sel-grid.grid-1 { grid-template-columns: 1fr; }
+            .lure-btn { font-size: 12px; padding: 10px; }
+            .lure-btn .lure-name { font-size: 13px; }
+            .hit-text { font-size: 3em; }
+            .gauge { width: 25px; height: 200px; }
+            .instructions { font-size: 14px; }
+            .scroll-area.lure-area { max-height: calc(100vh - 170px); }
+            .scroll-area.spot-area { max-height: calc(100vh - 130px); }
+            .scroll-area.style-area { max-height: calc(100vh - 150px); }
+        }
+    </style>
+</head>
+<body>
+<div id="gameContainer">
+
+    <!-- タイトル画面 -->
+    <div id="menuScreen">
+        <h1>BASS FISHING 3D 🎣</h1>
+        <p style="font-size:1.1em; margin-bottom:20px; opacity:0.8;">リアル3Dバスフィッシング</p>
+        <button class="start-button" onclick="showSpotSelect()">🎣 はじめる</button>
+    </div>
+
+    <!-- 釣り場選択画面 -->
+    <div id="spotScreen" class="hidden">
+        <h1 style="font-size:1.8em; margin-bottom:8px;">🗺️ 釣り場を選ぶ</h1>
+        <div class="scroll-area spot-area" id="spotList"></div>
+        <button class="start-button" onclick="showStyleSelect()">次へ → スタイル選択</button>
+    </div>
+
+    <!-- 釣りスタイル選択画面 -->
+    <div id="styleScreen" class="hidden">
+        <h1 style="font-size:1.8em; margin-bottom:5px;">🚤 釣りスタイルを選ぶ</h1>
+        <p id="styleSpotLabel" style="font-size:0.9em; opacity:0.7; margin-bottom:8px;">📍 湖</p>
+        <div class="scroll-area style-area" id="styleList"></div>
+        <button class="start-button" onclick="showLureSelect()">次へ → ルアー選択</button>
+        <button class="back-button" onclick="backFromStyle()">← 釣り場に戻る</button>
+    </div>
+
+    <!-- ルアー選択画面 -->
+    <div id="lureScreen" class="hidden">
+        <h1 style="font-size:1.8em; margin-bottom:3px;">🎣 ルアーを選ぶ</h1>
+        <p id="lureSpotLabel" style="font-size:0.9em; opacity:0.7; margin-bottom:6px;">📍 湖 / 🚶 オカッパリ</p>
+        <div class="scroll-area lure-area" id="lureList"></div>
+        <button class="start-button" onclick="startFishing()">🐟 Start Fishing!</button>
+        <button class="back-button" onclick="backFromLure()">← スタイルに戻る</button>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="gameScreen" class="hidden">
+        <canvas id="threeCanvas"></canvas>
+        <div class="game-ui">
+            <div>釣り場: <span id="uiSpot">湖</span> | スタイル: <span id="uiStyle">オカッパリ</span></div>
+            <div>ルアー: <span id="currentLure">クランクベイト</span></div>
+            <div>深度: <span id="currentDepth">2.5m</span></div>
+        </div>
+        <div class="instructions">
+            <div>PC: マウス移動で方向操作、クリックでアクション</div>
+            <div>スマホ: スワイプで方向、タップでアクション</div>
+        </div>
+        <div class="hit-text" id="hitText">HIT!</div>
+        <div class="snag-overlay hidden" id="snagOverlay">
+            <div class="snag-text">🪵 根掛かり！</div>
+            <div class="snag-hint">連打して外せ！</div>
+            <div class="snag-bar"><div class="snag-fill" id="snagFill"></div></div>
+        </div>
+    </div>
+
+    <!-- ファイト画面 -->
+    <div id="fightScreen" class="hidden">
+        <canvas id="fightCanvas"></canvas>
+        <div class="gauge-container">
+            <div class="gauge tension-gauge"><div class="gauge-fill" id="tensionFill"></div></div>
+            <div style="text-align:center;font-size:12px;margin-bottom:10px;">テンション</div>
+            <div class="gauge health-gauge"><div class="gauge-fill" id="healthFill"></div></div>
+            <div style="text-align:center;font-size:12px;">バス体力</div>
+        </div>
+        <div class="instructions">
+            <div>マウス上下/スワイプ上下でドラグ調整</div>
+            <div>張りすぎるとラインブレイク、緩めすぎるとバレる</div>
+        </div>
+    </div>
+
+    <!-- リザルト画面 -->
+    <div id="resultScreen" class="hidden">
+        <h2>🎉 釣果 🎉</h2>
+        <div class="result-fish">
+            <canvas id="resultCanvas" width="300" height="200"></canvas>
+            <div class="fish-species" id="fishSpecies">ラージマウスバス</div>
+            <div id="sizeComment" style="font-size:1.4em;margin:6px 0;min-height:1.6em;"></div>
+            <div class="fish-stats">
+                <div>サイズ: <span id="fishSize">45.0cm</span></div>
+                <div>重さ: <span id="fishWeight">2.1kg</span></div>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <button class="action-button" onclick="continueFishing()">もう一回</button>
+            <button class="action-button" onclick="backToTitle()">釣り場・ルアー変更</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ========== 魚種設定（10種） ==========
+const fishSpecies = {
+    largemouth: {
+        name: 'ラージマウスバス', icon: '🐟', rare: false,
+        minCm: 15, maxCm: 60, minKg: 0.1, maxKg: 5,
+        bodyColor: 0x2d5016, headColor: 0x3d6026, tailColor: 0x2d5016, eyeColor: 0xff0000, bellyColor: 0xffeaa7,
+        bodyScale: [1,1,1], mouthScale: 1.0,
+        lureAffinity: {} // neutral to all
+    },
+    smallmouth: {
+        name: 'スモールマウスバス', icon: '🐟', rare: false,
+        minCm: 12, maxCm: 55, minKg: 0.1, maxKg: 4,
+        bodyColor: 0x6b4226, headColor: 0x7a5230, tailColor: 0x5a3a20, eyeColor: 0xcc3300, bellyColor: 0xeedd99,
+        bodyScale: [0.9,0.9,0.9], mouthScale: 0.7,
+        fightStrength: 1.4,
+        lureAffinity: { minnow: 1.4, spinnerbait: 1.3, crankbait: 1.1 }
+    },
+    bluegill: {
+        name: 'ブルーギル', icon: '🐠', rare: false,
+        minCm: 5, maxCm: 28, minKg: 0.02, maxKg: 0.6,
+        bodyColor: 0x3a6a8a, headColor: 0x4a7a9a, tailColor: 0x3a6a8a, eyeColor: 0x222222, bellyColor: 0xff8844,
+        bodyScale: [0.5,0.7,0.5], mouthScale: 0.4,
+        lureAffinity: { nekorig: 1.6, downshot: 1.5, texasrig: 1.2, jig: 1.1 }
+    },
+    nigoi: {
+        name: 'ニゴイ', icon: '🐡', rare: false,
+        minCm: 15, maxCm: 65, minKg: 0.1, maxKg: 3,
+        bodyColor: 0xaaaaaa, headColor: 0xbbbbbb, tailColor: 0x999999, eyeColor: 0x333333, bellyColor: 0xdddddd,
+        bodyScale: [1.3,0.6,0.6], mouthScale: 0.5,
+        lureAffinity: { jig: 1.4, texasrig: 1.3, downshot: 1.3, vibration: 1.2 }
+    },
+    snakehead: {
+        name: 'ライギョ（雷魚）', icon: '🐍', rare: false,
+        minCm: 20, maxCm: 90, minKg: 0.3, maxKg: 7,
+        bodyColor: 0x2a3a1a, headColor: 0x3a4a2a, tailColor: 0x1a2a0a, eyeColor: 0xff4400, bellyColor: 0x8a9a6a,
+        bodyScale: [1.5,0.6,0.6], mouthScale: 1.2,
+        fightStrength: 1.3,
+        lureAffinity: { frog: 2.0, buzzbait: 1.5, pencilbait: 1.2 }
+    },
+    catfish: {
+        name: 'ナマズ', icon: '🐱', rare: false,
+        minCm: 15, maxCm: 80, minKg: 0.2, maxKg: 6,
+        bodyColor: 0x2a2a2a, headColor: 0x3a3a3a, tailColor: 0x1a1a1a, eyeColor: 0x444444, bellyColor: 0x6a6a5a,
+        bodyScale: [1.2,0.7,0.8], mouthScale: 1.3, hasWhiskers: true,
+        lureAffinity: { jig: 1.4, texasrig: 1.3, vibration: 1.3, downshot: 1.2 }
+    },
+    florida: {
+        name: 'フロリダラージマウスバス', icon: '🏆', rare: false,
+        minCm: 25, maxCm: 75, minKg: 0.8, maxKg: 12,
+        bodyColor: 0x1a4a0a, headColor: 0x2a5a1a, tailColor: 0x1a4a0a, eyeColor: 0xff0000, bellyColor: 0xeedd88,
+        bodyScale: [1.2,1.1,1.1], mouthScale: 1.2,
+        lureAffinity: {}
+    },
+    peacock: {
+        name: 'ピーコックバス', icon: '🌟', rare: true,
+        minCm: 20, maxCm: 70, minKg: 0.5, maxKg: 8,
+        bodyColor: 0x88aa00, headColor: 0x99bb11, tailColor: 0x77990a, eyeColor: 0xffdd00, bellyColor: 0xddcc44,
+        bodyScale: [1.0,1.0,1.0], mouthScale: 0.9, hasEyeSpot: true,
+        fightStrength: 1.3,
+        lureAffinity: { pencilbait: 1.6, popper: 1.5, buzzbait: 1.4, frog: 1.3 }
+    },
+    trout: {
+        name: 'ニジマス', icon: '🌈', rare: false,
+        minCm: 15, maxCm: 55, minKg: 0.1, maxKg: 4,
+        bodyColor: 0x88aaaa, headColor: 0x99bbbb, tailColor: 0x77999a, eyeColor: 0x222222, bellyColor: 0xeeeedd,
+        bodyScale: [1.1,0.7,0.7], mouthScale: 0.6, hasPinkStripe: true,
+        lureAffinity: { minnow: 1.5, spinnerbait: 1.4 }
+    },
+    pike: {
+        name: 'ノーザンパイク', icon: '⚡', rare: true,
+        minCm: 30, maxCm: 120, minKg: 0.5, maxKg: 12,
+        bodyColor: 0x3a6a2a, headColor: 0x4a7a3a, tailColor: 0x2a5a1a, eyeColor: 0xffaa00, bellyColor: 0xccddaa,
+        bodyScale: [1.8,0.5,0.5], mouthScale: 1.1,
+        fightStrength: 1.5,
+        lureAffinity: { spinnerbait: 1.6, minnow: 1.5, crankbait: 1.2 }
+    }
+};
+
+// Spot → fish distribution (species key → relative weight)
+const spotFish = {
+    lake:      { largemouth: 60, bluegill: 25, catfish: 15 },
+    pond:      { largemouth: 50, bluegill: 30, snakehead: 20 },
+    dam:       { largemouth: 50, smallmouth: 35, pike: 15 },
+    river:     { smallmouth: 35, nigoi: 25, trout: 25, catfish: 15 },
+    dock:      { largemouth: 55, bluegill: 25, catfish: 20 },
+    timber:    { largemouth: 50, snakehead: 30, catfish: 20 },
+    marsh:     { largemouth: 40, snakehead: 40, catfish: 20 },
+    mountain:  { smallmouth: 45, trout: 35, pike: 20 },
+    estuary:   { largemouth: 40, nigoi: 35, catfish: 25 },
+    hotspring: { largemouth: 45, bluegill: 30, catfish: 25 },
+    sluice:    { largemouth: 40, nigoi: 35, catfish: 25 },
+    florida:   { florida: 50, peacock: 30, bluegill: 20 }
+};
+
+// Pick a fish species based on spot + lure affinity
+function pickFishSpecies() {
+    const dist = spotFish[gameState.selectedSpot] || { largemouth: 100 };
+    const lure = gameState.selectedLure;
+    // Build weighted list with lure affinity applied
+    let entries = [];
+    let total = 0;
+    for (const [key, baseWeight] of Object.entries(dist)) {
+        const sp = fishSpecies[key];
+        const aff = (sp.lureAffinity && sp.lureAffinity[lure]) || 1.0;
+        const w = baseWeight * aff;
+        entries.push({ key, w });
+        total += w;
+    }
+    let r = Math.random() * total;
+    for (const e of entries) { r -= e.w; if (r <= 0) return e.key; }
+    return entries[entries.length - 1].key;
+}
+
+// Generate size with wide variance, monster/bean chances
+function generateFishSize(speciesKey) {
+    const sp = fishSpecies[speciesKey];
+    const spot = spotConfig[gameState.selectedSpot];
+    const spotMul = spot.sizeMin + Math.random() * (spot.sizeMax - spot.sizeMin);
+
+    // Base: gaussian-ish (sum of 3 randoms / 3)
+    let t = (Math.random() + Math.random() + Math.random()) / 3;
+
+    // Monster chance: 3%
+    let sizeTag = 'normal';
+    const monsterRoll = Math.random();
+    if (monsterRoll < 0.03) {
+        t = 1.0 + Math.random() * 0.5; // 1.0-1.5x of max
+        sizeTag = 'monster';
+    } else if (monsterRoll < 0.08) {
+        t = (Math.random() * 0.3); // very small end
+        // Bean chance within this: make it tiny
+        if (Math.random() < 0.5) { t *= 0.6; sizeTag = 'bean'; }
+    }
+
+    let cm, kg;
+    if (sizeTag === 'monster') {
+        cm = sp.maxCm * (1.0 + Math.random() * 0.5) * spotMul;
+        kg = sp.maxKg * (1.0 + Math.random() * 0.5) * spotMul;
+    } else if (sizeTag === 'bean') {
+        cm = sp.minCm * (0.5 + Math.random() * 0.3) * spotMul;
+        kg = sp.minKg * (0.5 + Math.random() * 0.5) * spotMul;
+    } else {
+        cm = sp.minCm + t * (sp.maxCm - sp.minCm);
+        cm *= spotMul;
+        // Weight follows cube-ish relationship
+        const ratio = (cm / spotMul - sp.minCm) / (sp.maxCm - sp.minCm + 0.01);
+        kg = sp.minKg + ratio * ratio * (sp.maxKg - sp.minKg);
+        kg *= spotMul;
+        // Add some noise
+        kg *= 0.8 + Math.random() * 0.4;
+    }
+
+    cm = Math.max(cm, 1);
+    kg = Math.max(kg, 0.01);
+    return { cm: Math.round(cm * 10) / 10, kg: Math.round(kg * 100) / 100, sizeTag };
+}
+
+function getSizeComment(cm, sizeTag, speciesKey) {
+    const sp = fishSpecies[speciesKey];
+    if (sizeTag === 'monster') {
+        const msgs = ['🔥 モンスター！！', '💥 デカすぎ！！！', '🏆 自己ベスト級！！', '😱 ヤバい！デカい！！'];
+        return msgs[Math.floor(Math.random() * msgs.length)];
+    }
+    if (sizeTag === 'bean') {
+        const msgs = ['...ちっさ！😂', '豆サイズ...🫘', 'かわいい...🥺', 'リリースしよ...'];
+        return msgs[Math.floor(Math.random() * msgs.length)];
+    }
+    // Relative to species range
+    const ratio = (cm - sp.minCm) / (sp.maxCm - sp.minCm + 0.01);
+    if (ratio > 0.85) return '🎉 ナイスサイズ！';
+    if (ratio > 0.7) return '👍 いいサイズ！';
+    if (ratio < 0.2) return '小さいけど釣れた！';
+    return '';
+}
+
+// ========== 釣り場設定（12箇所） ==========
+const spotConfig = {
+    lake: {
+        name: '湖', icon: '🏞️', desc: '広いオープンウォーター。回遊バス狙い。中サイズが多い。',
+        rec: '全ルアー有効',
+        fogColor: 0x1a6b5a, clearColor: 0x1a6b5a, waterColor: 0x2e8b7a, waterOpacity: 0.55,
+        fogNear: 12, fogFar: 55, sizeMin: 0.9, sizeMax: 1.1,
+        biteModifiers: {}, current: null, snagChance: 0, objects: 'lake',
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    pond: {
+        name: '野池', icon: '🌿', desc: '小規模な池。カバー多め。数釣り向き。小〜中サイズ。',
+        rec: 'ソフトベイト系',
+        fogColor: 0x3d5c3a, clearColor: 0x3d5c3a, waterColor: 0x5a7a3a, waterOpacity: 0.7,
+        fogNear: 8, fogFar: 35, sizeMin: 0.6, sizeMax: 0.9,
+        biteModifiers: { jig: 1.3, texasrig: 1.4, nekorig: 1.5, downshot: 1.4, frog: 1.2 },
+        current: null, snagChance: 0, objects: 'pond',
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    dam: {
+        name: 'ダム湖', icon: '🏔️', desc: '深い水域。急な地形変化。ディープの大物狙い。',
+        rec: 'バイブ / クランク / ジグ',
+        fogColor: 0x0d2a4a, clearColor: 0x0d2a4a, waterColor: 0x0a3060, waterOpacity: 0.75,
+        fogNear: 8, fogFar: 40, sizeMin: 1.1, sizeMax: 1.6,
+        biteModifiers: { vibration: 1.5, crankbait: 1.4, jig: 1.5, texasrig: 1.2 },
+        current: null, snagChance: 0, objects: 'dam',
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    river: {
+        name: '川', icon: '🌊', desc: '流れあり。流れのヨレにバスが付く。中サイズ。',
+        rec: 'ミノー / スピナーベイト',
+        fogColor: 0x1a6b6b, clearColor: 0x1a6b6b, waterColor: 0x3aaa9a, waterOpacity: 0.5,
+        fogNear: 10, fogFar: 50, sizeMin: 0.8, sizeMax: 1.1,
+        biteModifiers: { minnow: 1.5, spinnerbait: 1.4, crankbait: 1.2 },
+        current: { x: 0.03, z: 0 }, snagChance: 0, objects: 'river',
+        allowedStyles: ['shore','canoe','wader']
+    },
+    dock: {
+        name: 'ボート乗り場', icon: '⚓', desc: '桟橋・杭のストラクチャー。テクニカル。中〜大サイズ。',
+        rec: 'テキサスリグ / ネコリグ',
+        fogColor: 0x2a3a2a, clearColor: 0x2a3a2a, waterColor: 0x4a5a3a, waterOpacity: 0.7,
+        fogNear: 8, fogFar: 35, sizeMin: 0.9, sizeMax: 1.3,
+        biteModifiers: { texasrig: 1.5, nekorig: 1.5, downshot: 1.3, jig: 1.2 },
+        current: null, snagChance: 0, objects: 'dock',
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    timber: {
+        name: '立ち木エリア', icon: '🪵', desc: '沈んだ木が多数。根掛かり注意！大物潜む。',
+        rec: 'ラバージグ / テキサスリグ',
+        fogColor: 0x1a2a1a, clearColor: 0x1a2a1a, waterColor: 0x2a3a1a, waterOpacity: 0.8,
+        fogNear: 6, fogFar: 30, sizeMin: 1.0, sizeMax: 1.5,
+        biteModifiers: { jig: 1.6, texasrig: 1.5, frog: 1.1 },
+        current: null, snagChance: 0.003, objects: 'timber',
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    marsh: {
+        name: '沼の葦原', icon: '🌾', desc: '葦・リリーパッド。濁り強い。大物の巣窟。',
+        rec: 'フロッグ / トップウォーター系',
+        fogColor: 0x2a4a1a, clearColor: 0x2a4a1a, waterColor: 0x3a5a1a, waterOpacity: 0.8,
+        fogNear: 6, fogFar: 28, sizeMin: 1.1, sizeMax: 1.6,
+        biteModifiers: { frog: 2.0, buzzbait: 1.5, pencilbait: 1.3, popper: 1.3 },
+        current: null, snagChance: 0.001, objects: 'marsh',
+        allowedStyles: ['shore','canoe','floater']
+    },
+    mountain: {
+        name: '山上湖', icon: '⛰️', desc: '標高の高い湖。クリアウォーター。スモールマウスも。ファイト強い。',
+        rec: 'ミノー / スピナーベイト',
+        fogColor: 0x4a8aaa, clearColor: 0x5a9abb, waterColor: 0x5abadd, waterOpacity: 0.35,
+        fogNear: 15, fogFar: 65, sizeMin: 0.8, sizeMax: 1.1,
+        biteModifiers: { minnow: 1.5, spinnerbait: 1.4, crankbait: 1.1 },
+        current: null, snagChance: 0, objects: 'mountain',
+        fightStrength: 1.5,
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    estuary: {
+        name: '河口エリア', icon: '🏖️', desc: '汽水域。ベイトフィッシュ豊富。大型が回遊。緩い流れ。',
+        rec: 'バイブレーション / ミノー',
+        fogColor: 0x3a5a4a, clearColor: 0x3a5a4a, waterColor: 0x5a7a5a, waterOpacity: 0.65,
+        fogNear: 8, fogFar: 40, sizeMin: 1.0, sizeMax: 1.5,
+        biteModifiers: { vibration: 1.5, minnow: 1.4, spinnerbait: 1.2 },
+        current: { x: 0.015, z: 0 }, snagChance: 0, objects: 'estuary',
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    hotspring: {
+        name: '温泉流入エリア', icon: '♨️', desc: '温排水で高活性。小規模だが魚影濃い。数釣り天国。',
+        rec: 'ネコリグ / ダウンショット',
+        fogColor: 0x5a6a6a, clearColor: 0x5a6a6a, waterColor: 0x8a9a9a, waterOpacity: 0.6,
+        fogNear: 7, fogFar: 30, sizeMin: 0.7, sizeMax: 1.0,
+        biteModifiers: { nekorig: 1.6, downshot: 1.5, texasrig: 1.2, spinnerbait: 1.1 },
+        current: null, snagChance: 0, objects: 'hotspring',
+        allowedStyles: ['shore','wader']
+    },
+    sluice: {
+        name: '水門エリア', icon: '🚧', desc: '水門の構造物。流速がランダム変化！中〜大型。',
+        rec: 'クランクベイト / スピナーベイト',
+        fogColor: 0x2a4a3a, clearColor: 0x2a4a3a, waterColor: 0x3a6a4a, waterOpacity: 0.65,
+        fogNear: 8, fogFar: 38, sizeMin: 0.9, sizeMax: 1.4,
+        biteModifiers: { crankbait: 1.5, spinnerbait: 1.4, vibration: 1.3, minnow: 1.2 },
+        current: { x: 0.02, z: 0 }, sluiceFlow: true, snagChance: 0, objects: 'sluice',
+        allowedStyles: ['shore','bassboat','canoe','floater','wader']
+    },
+    florida: {
+        name: 'フロリダの湖', icon: '🌴', desc: 'Florida-style lake. Huge Florida bass up to 10kg! Lily pads everywhere.',
+        rec: 'フロッグ / バズベイト',
+        fogColor: 0x1a4a1a, clearColor: 0x1a4a1a, waterColor: 0x2a6a1a, waterOpacity: 0.8,
+        fogNear: 7, fogFar: 35, sizeMin: 1.3, sizeMax: 2.2,
+        biteModifiers: { frog: 2.0, buzzbait: 1.6, pencilbait: 1.3, popper: 1.3, jig: 1.3 },
+        current: null, snagChance: 0.001, objects: 'florida',
+        allowedStyles: ['bassboat','canoe','floater']
+    }
+};
+
+// ========== 釣りスタイル設定 ==========
+const styleConfig = {
+    shore:    { name: 'オカッパリ（岸釣り）', icon: '🚶', desc: '岸から投げる。キャスト距離に制限あり。', castRange: 15, moveSpeed: 0, biteBonus: 1.0 },
+    bassboat: { name: 'バスボート', icon: '🚤', desc: '高速移動＆広キャスト。深場も攻略可。', castRange: 25, moveSpeed: 3, biteBonus: 0.95 },
+    canoe:    { name: 'カヌー / カヤック', icon: '🛶', desc: '静かに移動。バイト率ボーナス。', castRange: 20, moveSpeed: 1.5, biteBonus: 1.15 },
+    floater:  { name: 'フローター（浮き輪型）', icon: '🔵', desc: '超静音！バイト率UP大。移動遅め。浅〜中層向き。', castRange: 18, moveSpeed: 0.5, biteBonus: 1.3 },
+    wader:    { name: 'ウェーダー（胴長）', icon: '🥾', desc: '立ち込み釣り。岸より沖を攻める。浅場限定。', castRange: 17, moveSpeed: 0.3, biteBonus: 1.1 }
+};
+
+// ========== ルアー設定 ==========
+const lureConfig = {
+    pencilbait: { layer: 0.3, speed: 0.02,  biteRate: 0.30, sizeMultiplier: 1.0, minSize: 30, maxSize: 50, color: 0x00bfff, shape: 'pencil',  name: 'ペンシルベイト', category: 'top' },
+    popper:     { layer: 0.2, speed: 0.015, biteRate: 0.30, sizeMultiplier: 1.1, minSize: 30, maxSize: 55, color: 0xff4444, shape: 'popper',  name: 'ポッパー', category: 'top' },
+    darter:     { layer: 0.8, speed: 0.018, biteRate: 0.15, sizeMultiplier: 1.5, minSize: 40, maxSize: 65, color: 0x8844aa, shape: 'darter',  name: 'ダーター', category: 'top' },
+    frog:       { layer: 0.1, speed: 0.012, biteRate: 0.12, sizeMultiplier: 1.6, minSize: 45, maxSize: 70, color: 0x22cc44, shape: 'frog',    name: 'フロッグ', category: 'top' },
+    buzzbait:   { layer: 0.3, speed: 0.03,  biteRate: 0.40, sizeMultiplier: 1.0, minSize: 28, maxSize: 50, color: 0xffaa00, shape: 'buzz',    name: 'バズベイト', category: 'top' },
+    crankbait:  { layer: 3,   speed: 0.03,  biteRate: 0.30, sizeMultiplier: 1.0, minSize: 30, maxSize: 55, color: 0xff6b35, shape: 'crank',   name: 'クランクベイト', category: 'hard' },
+    vibration:  { layer: 4,   speed: 0.025, biteRate: 0.40, sizeMultiplier: 0.9, minSize: 25, maxSize: 50, color: 0xcccc00, shape: 'vib',     name: 'バイブレーション', category: 'hard' },
+    spinnerbait:{ layer: 3,   speed: 0.035, biteRate: 0.50, sizeMultiplier: 0.8, minSize: 20, maxSize: 45, color: 0xeeeeee, shape: 'spinner', name: 'スピナーベイト', category: 'hard' },
+    minnow:     { layer: 2,   speed: 0.02,  biteRate: 0.30, sizeMultiplier: 1.1, minSize: 30, maxSize: 55, color: 0x66bbee, shape: 'minnow',  name: 'ミノー', category: 'hard' },
+    jig:        { layer: 7,   speed: 0.015, biteRate: 0.20, sizeMultiplier: 1.3, minSize: 40, maxSize: 65, color: 0x333333, shape: 'jig',     name: 'ラバージグ', category: 'soft' },
+    texasrig:   { layer: 6,   speed: 0.018, biteRate: 0.30, sizeMultiplier: 1.1, minSize: 30, maxSize: 55, color: 0x8b4513, shape: 'texas',   name: 'テキサスリグ', category: 'soft' },
+    nekorig:    { layer: 5,   speed: 0.012, biteRate: 0.55, sizeMultiplier: 0.7, minSize: 20, maxSize: 40, color: 0xee88aa, shape: 'neko',    name: 'ネコリグ', category: 'soft' },
+    downshot:   { layer: 7,   speed: 0.01,  biteRate: 0.50, sizeMultiplier: 0.85,minSize: 25, maxSize: 45, color: 0xaa66cc, shape: 'downshot',name: 'ダウンショットリグ', category: 'soft' }
+};
+
+// ========== ゲーム状態 ==========
+let gameState = {
+    currentScreen: 'menu',
+    selectedLure: 'crankbait',
+    selectedSpot: 'lake',
+    selectedStyle: 'shore',
+    scene: null, camera: null, renderer: null, lure: null,
+    bass: [], waterSurface: null, seaweed: [], particles: null,
+    animationId: null, audioContext: null, sounds: {},
+    spotObjects: [], isSnagged: false, snagProgress: 0
+};
+
+let bassStates = [];
+let gameTime = 0;
+let mousePos = { x: 0, y: 0 };
+let isMouseDown = false;
+let lastClickTime = 0;
+let sluiceTimer = 0;
+
+// ========== UI Navigation ==========
+function hideAll() {
+    ['menuScreen','spotScreen','styleScreen','lureScreen','gameScreen','fightScreen','resultScreen']
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
+}
+function showScreen(id) { hideAll(); document.getElementById(id).classList.remove('hidden'); }
+
+function showSpotSelect() {
+    gameState.currentScreen = 'spot';
+    buildSpotList();
+    showScreen('spotScreen');
+}
+
+function showStyleSelect() {
+    gameState.currentScreen = 'style';
+    const spot = spotConfig[gameState.selectedSpot];
+    document.getElementById('styleSpotLabel').textContent = spot.icon + ' ' + spot.name;
+    buildStyleList();
+    showScreen('styleScreen');
+}
+
+function showLureSelect() {
+    gameState.currentScreen = 'lure';
+    const spot = spotConfig[gameState.selectedSpot];
+    const style = styleConfig[gameState.selectedStyle];
+    document.getElementById('lureSpotLabel').textContent = '📍 ' + spot.name + ' / ' + style.icon + ' ' + style.name;
+    buildLureList();
+    showScreen('lureScreen');
+}
+
+function backFromStyle() { showSpotSelect(); }
+function backFromLure() { showStyleSelect(); }
+function backToTitle() { gameState.currentScreen = 'menu'; showScreen('menuScreen'); }
+
+// ========== Build dynamic lists ==========
+function buildSpotList() {
+    const container = document.getElementById('spotList');
+    let html = '<div class="sel-grid">';
+    for (const [key, s] of Object.entries(spotConfig)) {
+        const sel = key === gameState.selectedSpot ? ' selected' : '';
+        html += `<button class="sel-btn${sel}" data-spot="${key}" onclick="selectSpot(this)">
+            <span class="sel-icon">${s.icon}</span> <span class="sel-name">${s.name}</span><br>
+            <small>${s.desc}</small>
+            <div class="sel-rec">🎯 おすすめ: ${s.rec}</div>
+        </button>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function selectSpot(el) {
+    document.querySelectorAll('#spotList .sel-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    gameState.selectedSpot = el.dataset.spot;
+}
+
+function buildStyleList() {
+    const container = document.getElementById('styleList');
+    const spot = spotConfig[gameState.selectedSpot];
+    let html = '<div class="sel-grid">';
+    let firstAllowed = null;
+    for (const [key, s] of Object.entries(styleConfig)) {
+        const allowed = spot.allowedStyles.includes(key);
+        if (allowed && !firstAllowed) firstAllowed = key;
+        const sel = key === gameState.selectedStyle && allowed ? ' selected' : '';
+        const dis = allowed ? '' : ' disabled';
+        html += `<button class="sel-btn${sel}${dis}" data-style="${key}" ${allowed ? 'onclick="selectStyle(this)"' : ''}>
+            <span class="sel-icon">${s.icon}</span> <span class="sel-name">${s.name}</span><br>
+            <small>${s.desc}</small>
+            ${!allowed ? '<div style="color:#ff6b6b;font-size:11px;margin-top:3px;">⛔ この釣り場では使用不可</div>' : ''}
+        </button>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+    // Auto-select first allowed if current is not allowed
+    if (!spot.allowedStyles.includes(gameState.selectedStyle)) {
+        gameState.selectedStyle = firstAllowed || 'shore';
+        const btn = container.querySelector(`[data-style="${gameState.selectedStyle}"]`);
+        if (btn) btn.classList.add('selected');
+    }
+}
+
+function selectStyle(el) {
+    document.querySelectorAll('#styleList .sel-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    gameState.selectedStyle = el.dataset.style;
+}
+
+function buildLureList() {
+    const container = document.getElementById('lureList');
+    const spot = spotConfig[gameState.selectedSpot];
+    const categories = {
+        top:  { label: '🌊 トップウォーター系 (Surface)', lures: [] },
+        hard: { label: '🐟 ハードベイト系 (Hard bait)', lures: [] },
+        soft: { label: '🪱 ソフトベイト系 (Soft bait)', lures: [] }
+    };
+    const emojiMap = { pencilbait:'✏️', popper:'💧', darter:'🫧', frog:'🐸', buzzbait:'🌀',
+        crankbait:'🔴', vibration:'📳', spinnerbait:'✨', minnow:'🐠',
+        jig:'⚫', texasrig:'🟤', nekorig:'🪱', downshot:'🔻' };
+    const descMap = { pencilbait:'水面ドッグウォーク', popper:'水面でポコポコ音', darter:'水面直下を左右に潜行',
+        frog:'カバー攻略', buzzbait:'水面バシャバシャ', crankbait:'中層ブリブリ', vibration:'ブルブル広範囲',
+        spinnerbait:'キラキラブレード', minnow:'ジャーク&ポーズ', jig:'底ズル引き', texasrig:'カバー撃ち',
+        nekorig:'頭下げピクピク', downshot:'底シェイク' };
+
+    for (const [key, c] of Object.entries(lureConfig)) {
+        const mod = spot.biteModifiers[key] || 1.0;
+        categories[c.category].lures.push({ key, mod });
+    }
+
+    let html = '';
+    for (const cat of Object.values(categories)) {
+        html += `<div class="category-header">${cat.label}</div><div class="sel-grid">`;
+        for (const { key, mod } of cat.lures) {
+            const c = lureConfig[key];
+            const sel = key === gameState.selectedLure ? ' selected' : '';
+            const bonusTag = mod > 1.0 ? `<span class="bonus-tag">×${mod.toFixed(1)}</span>` : '';
+            html += `<button class="lure-btn${sel}" data-lure="${key}" onclick="selectLure(this)">
+                <span class="lure-name">${emojiMap[key]||''} ${c.name}${bonusTag}</span><br>
+                <small>${descMap[key]||''}</small>
+            </button>`;
+        }
+        html += '</div>';
+    }
+    container.innerHTML = html;
+    // If no selection visible, default to crankbait
+    if (!container.querySelector('.lure-btn.selected')) {
+        const first = container.querySelector('.lure-btn');
+        if (first) { first.classList.add('selected'); gameState.selectedLure = first.dataset.lure; }
+    }
+}
+
+function selectLure(el) {
+    document.querySelectorAll('#lureList .lure-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    gameState.selectedLure = el.dataset.lure;
+}
+
+// ========== Audio ==========
+function initAudio() {
+    try { gameState.audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+}
+function playSound(type, frequency=440, duration=0.3) {
+    if (!gameState.audioContext) return;
+    const osc = gameState.audioContext.createOscillator();
+    const gain = gameState.audioContext.createGain();
+    osc.connect(gain); gain.connect(gameState.audioContext.destination);
+    const t = gameState.audioContext.currentTime;
+    switch(type) {
+        case 'bite': osc.frequency.setValueAtTime(800,t); osc.frequency.exponentialRampToValueAtTime(400,t+0.1); break;
+        case 'reel': osc.frequency.setValueAtTime(300,t); break;
+        case 'splash': osc.frequency.setValueAtTime(150,t); break;
+        case 'pop': osc.frequency.setValueAtTime(600,t); osc.frequency.exponentialRampToValueAtTime(200,t+0.05); break;
+    }
+    gain.gain.setValueAtTime(0.1,t);
+    gain.gain.exponentialRampToValueAtTime(0.01,t+duration);
+    osc.start(); osc.stop(t+duration);
+}
+
+// ========== Three.js Setup ==========
+function initThreeJS() {
+    const canvas = document.getElementById('threeCanvas');
+    const spot = spotConfig[gameState.selectedSpot];
+
+    gameState.scene = new THREE.Scene();
+    gameState.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    gameState.camera.position.set(0, -2, 5);
+    gameState.camera.lookAt(0, -2, 0);
+
+    gameState.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    gameState.renderer.setSize(window.innerWidth, window.innerHeight);
+    gameState.renderer.setClearColor(spot.clearColor);
+    gameState.scene.fog = new THREE.Fog(spot.fogColor, spot.fogNear, spot.fogFar);
+
+    const ambient = new THREE.AmbientLight(0x4a90e2, 0.4);
+    gameState.scene.add(ambient);
+    // Mountain spot gets brighter light
+    const dirIntensity = gameState.selectedSpot === 'mountain' ? 1.2 : 0.8;
+    const dir = new THREE.DirectionalLight(0xffffff, dirIntensity);
+    dir.position.set(0, 10, 0); dir.castShadow = true;
+    gameState.scene.add(dir);
+
+    createWaterSurface();
+    createSeaweed();
+    createSpotObjects();
+    createParticles();
+    createLure();
+    createBass();
+    setupEventListeners();
+    animate();
+}
+
+function createWaterSurface() {
+    const spot = spotConfig[gameState.selectedSpot];
+    const geo = new THREE.PlaneGeometry(100, 100, 64, 64);
+    const mat = new THREE.MeshLambertMaterial({ color: spot.waterColor, transparent: true, opacity: spot.waterOpacity, side: THREE.DoubleSide });
+    gameState.waterSurface = new THREE.Mesh(geo, mat);
+    gameState.waterSurface.rotation.x = -Math.PI/2;
+    gameState.waterSurface.position.y = 0;
+    gameState.scene.add(gameState.waterSurface);
+}
+
+function createSeaweed() {
+    gameState.seaweed = [];
+    for (let i = 0; i < 20; i++) {
+        const s = new THREE.Mesh(new THREE.ConeGeometry(0.1,2,4), new THREE.MeshLambertMaterial({ color: 0x2d5016 }));
+        s.position.set((Math.random()-0.5)*50, -8, (Math.random()-0.5)*50);
+        s.rotation.z = Math.random()*0.3-0.15;
+        gameState.seaweed.push(s);
+        gameState.scene.add(s);
+    }
+}
+
+function createSpotObjects() {
+    gameState.spotObjects = [];
+    const type = spotConfig[gameState.selectedSpot].objects;
+    const add = (mesh) => { gameState.scene.add(mesh); gameState.spotObjects.push(mesh); };
+
+    if (type === 'pond' || type === 'lake') {
+        const n = type === 'pond' ? 30 : 5;
+        for (let i=0;i<n;i++) { const w=new THREE.Mesh(new THREE.ConeGeometry(0.15+Math.random()*0.1,2+Math.random()*2,4),new THREE.MeshLambertMaterial({color:0x1a5a0a})); w.position.set((Math.random()-0.5)*40,-8,(Math.random()-0.5)*40); add(w); }
+    }
+    if (type === 'dam') {
+        for (let i=0;i<12;i++) { const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.8+Math.random()*1.5,0),new THREE.MeshLambertMaterial({color:0x555555})); r.position.set((Math.random()-0.5)*30,-9-Math.random()*3,(Math.random()-0.5)*30); r.scale.y=0.5; add(r); }
+    }
+    if (type === 'river' || type === 'estuary' || type === 'sluice') {
+        for (let i=0;i<8;i++) { const r=new THREE.Mesh(new THREE.SphereGeometry(0.5+Math.random()*0.8,6,6),new THREE.MeshLambertMaterial({color:0x666666})); r.position.set((Math.random()-0.5)*30,-7-Math.random()*2,(Math.random()-0.5)*30); r.scale.y=0.6; add(r); }
+    }
+    if (type === 'sluice') {
+        // Sluice gate structure
+        const gate=new THREE.Mesh(new THREE.BoxGeometry(6,8,1),new THREE.MeshLambertMaterial({color:0x555555}));
+        gate.position.set(0,-3,12); add(gate);
+        for (let i=-1;i<=1;i+=2) { const p=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,10,6),new THREE.MeshLambertMaterial({color:0x444444})); p.position.set(i*3.5,-2,12); add(p); }
+    }
+    if (type === 'dock') {
+        for (let i=0;i<6;i++) { const p=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,8,6),new THREE.MeshLambertMaterial({color:0x5a3a1a})); p.position.set(-5+i*2,-3,3); add(p); }
+        const plank=new THREE.Mesh(new THREE.BoxGeometry(12,0.2,2),new THREE.MeshLambertMaterial({color:0x6a4a2a})); plank.position.set(0,0.5,3); add(plank);
+    }
+    if (type === 'timber') {
+        for (let i=0;i<15;i++) {
+            const t=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.2,5+Math.random()*4,5),new THREE.MeshLambertMaterial({color:0x3a2a1a}));
+            t.position.set((Math.random()-0.5)*30,-5,(Math.random()-0.5)*30);
+            t.rotation.z=(Math.random()-0.5)*0.3; t.rotation.x=(Math.random()-0.5)*0.2; add(t);
+            for (let j=0;j<3;j++) { const b=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.06,1.5,4),new THREE.MeshLambertMaterial({color:0x4a3a2a})); b.position.copy(t.position); b.position.y+=1+j; b.rotation.z=(Math.random()-0.5)*1.5; add(b); }
+        }
+    }
+    if (type === 'marsh' || type === 'florida') {
+        const reedCount = type === 'florida' ? 15 : 25;
+        const padCount = type === 'florida' ? 25 : 12;
+        for (let i=0;i<reedCount;i++) { const r=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.05,4+Math.random()*2,4),new THREE.MeshLambertMaterial({color:0x6a7a2a})); r.position.set((Math.random()-0.5)*30,-1,(Math.random()-0.5)*30); add(r); }
+        for (let i=0;i<padCount;i++) { const p=new THREE.Mesh(new THREE.CircleGeometry(0.4+Math.random()*0.3,8),new THREE.MeshLambertMaterial({color:0x2a6a1a,side:THREE.DoubleSide})); p.rotation.x=-Math.PI/2; p.position.set((Math.random()-0.5)*25,0.05,(Math.random()-0.5)*25); add(p); }
+    }
+    if (type === 'mountain') {
+        // Clear water, some rocks, distant "mountains" (large cones)
+        for (let i=0;i<6;i++) { const r=new THREE.Mesh(new THREE.DodecahedronGeometry(1+Math.random()*2,0),new THREE.MeshLambertMaterial({color:0x777777})); r.position.set((Math.random()-0.5)*40,-9,(Math.random()-0.5)*40); r.scale.y=0.4; add(r); }
+        for (let i=0;i<3;i++) { const m=new THREE.Mesh(new THREE.ConeGeometry(8,20,6),new THREE.MeshLambertMaterial({color:0x4a6a4a})); m.position.set(-30+i*30,5,-40); add(m); }
+    }
+    if (type === 'hotspring') {
+        // Small canal walls + steam particles (white spheres)
+        for (let s=-1;s<=1;s+=2) { const w=new THREE.Mesh(new THREE.BoxGeometry(30,2,0.5),new THREE.MeshLambertMaterial({color:0x888888})); w.position.set(0,-5,s*4); add(w); }
+        for (let i=0;i<20;i++) { const st=new THREE.Mesh(new THREE.SphereGeometry(0.15,4,4),new THREE.MeshLambertMaterial({color:0xdddddd,transparent:true,opacity:0.4})); st.position.set((Math.random()-0.5)*15,-1+Math.random()*2,(Math.random()-0.5)*6); add(st); }
+    }
+    if (type === 'estuary') {
+        // Sandy bottom, some driftwood
+        const sand=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshLambertMaterial({color:0xc2b280,side:THREE.DoubleSide}));
+        sand.rotation.x=-Math.PI/2; sand.position.y=-10; add(sand);
+        for (let i=0;i<5;i++) { const d=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,3,5),new THREE.MeshLambertMaterial({color:0x5a4a3a})); d.position.set((Math.random()-0.5)*20,-8,(Math.random()-0.5)*20); d.rotation.z=(Math.random()-0.5)*1.2; add(d); }
+    }
+}
+
+function createParticles() {
+    const n = 1000;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(n*3);
+    for (let i=0;i<n*3;i+=3) { pos[i]=(Math.random()-0.5)*100; pos[i+1]=Math.random()*-15; pos[i+2]=(Math.random()-0.5)*100; }
+    geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    gameState.particles = new THREE.Points(geo, new THREE.PointsMaterial({ color:0x87ceeb, size:0.05, transparent:true, opacity:0.6 }));
+    gameState.scene.add(gameState.particles);
+}
+
+function createLure() {
+    const lureGroup = new THREE.Group();
+    const config = lureConfig[gameState.selectedLure];
+    const col = config.color;
+
+    switch (config.shape) {
+        case 'pencil': { const b=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.6,8),new THREE.MeshLambertMaterial({color:col})); b.rotation.z=Math.PI/2; lureGroup.add(b); const e=new THREE.Mesh(new THREE.SphereGeometry(0.04,6,6),new THREE.MeshLambertMaterial({color:0xffffff})); e.position.set(0.3,0.04,0); lureGroup.add(e); break; }
+        case 'popper': { const h=new THREE.Mesh(new THREE.SphereGeometry(0.15,8,8),new THREE.MeshLambertMaterial({color:col})); h.position.set(0.15,0,0); lureGroup.add(h); const b=new THREE.Mesh(new THREE.CapsuleGeometry(0.1,0.3,4,8),new THREE.MeshLambertMaterial({color:col})); b.rotation.z=Math.PI/2; b.position.set(-0.1,0,0); lureGroup.add(b); const c=new THREE.Mesh(new THREE.RingGeometry(0.04,0.12,8),new THREE.MeshLambertMaterial({color:0xffffff,side:THREE.DoubleSide})); c.position.set(0.3,0,0); c.rotation.y=Math.PI/2; lureGroup.add(c); break; }
+        case 'darter': { const b=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.15,0.12),new THREE.MeshLambertMaterial({color:col})); lureGroup.add(b); const n=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.2,4),new THREE.MeshLambertMaterial({color:0x6633aa})); n.rotation.z=-Math.PI/2; n.position.set(0.4,0,0); lureGroup.add(n); break; }
+        case 'frog': { const b=new THREE.Mesh(new THREE.SphereGeometry(0.18,8,8),new THREE.MeshLambertMaterial({color:col})); lureGroup.add(b); for(let i=-1;i<=1;i+=2){const l=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.04,0.3,4),new THREE.MeshLambertMaterial({color:0x118833}));l.position.set(-0.15,-0.1,i*0.12);l.rotation.x=i*0.3;lureGroup.add(l);} for(let i=-1;i<=1;i+=2){const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6),new THREE.MeshLambertMaterial({color:0xffff00}));e.position.set(0.1,0.12,i*0.1);lureGroup.add(e);} break; }
+        case 'buzz': { const w=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.5,4),new THREE.MeshLambertMaterial({color:0x888888})); w.rotation.z=Math.PI/4; w.position.set(0,0.15,0); lureGroup.add(w); const bl=new THREE.Mesh(new THREE.CircleGeometry(0.12,6),new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide})); bl.position.set(0.2,0.3,0); lureGroup.add(bl); const h=new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6),new THREE.MeshLambertMaterial({color:0xdddddd})); h.position.set(-0.1,0,0); lureGroup.add(h); break; }
+        case 'crank': { const b=new THREE.Mesh(new THREE.CapsuleGeometry(0.12,0.4,4,8),new THREE.MeshLambertMaterial({color:col})); b.rotation.z=Math.PI/2; lureGroup.add(b); const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.2,0.15),new THREE.MeshLambertMaterial({color:0xcccccc,transparent:true,opacity:0.7})); l.position.set(0.25,-0.05,0); lureGroup.add(l); break; }
+        case 'vib': { const b=new THREE.Mesh(new THREE.OctahedronGeometry(0.18,0),new THREE.MeshLambertMaterial({color:col})); b.scale.set(2.5,1,0.5); lureGroup.add(b); break; }
+        case 'spinner': { const h=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.3,6),new THREE.MeshLambertMaterial({color:col})); h.rotation.z=Math.PI/2; lureGroup.add(h); const w=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.4,4),new THREE.MeshLambertMaterial({color:0x888888})); w.position.set(0,0.2,0); lureGroup.add(w); const bl=new THREE.Mesh(new THREE.CircleGeometry(0.1,8),new THREE.MeshLambertMaterial({color:0xffd700,side:THREE.DoubleSide})); bl.position.set(0,0.35,0); lureGroup.add(bl); break; }
+        case 'minnow': { const b=new THREE.Mesh(new THREE.CapsuleGeometry(0.07,0.55,4,8),new THREE.MeshLambertMaterial({color:col})); b.rotation.z=Math.PI/2; lureGroup.add(b); const l=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.12,0.1),new THREE.MeshLambertMaterial({color:0xcccccc,transparent:true,opacity:0.6})); l.position.set(0.32,-0.04,0); lureGroup.add(l); const t=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.15,4),new THREE.MeshLambertMaterial({color:0x4499cc})); t.rotation.z=Math.PI/2; t.position.set(-0.35,0,0); lureGroup.add(t); break; }
+        case 'jig': { const h=new THREE.Mesh(new THREE.SphereGeometry(0.12,6,6),new THREE.MeshLambertMaterial({color:col})); lureGroup.add(h); for(let i=0;i<6;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.015,0.4,3),new THREE.MeshLambertMaterial({color:0x444444}));s.position.set(-0.05,-0.2,0);s.rotation.x=(Math.random()-0.5)*0.5;s.rotation.z=(Math.random()-0.5)*0.5;lureGroup.add(s);} break; }
+        case 'texas': { const s=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.15,6),new THREE.MeshLambertMaterial({color:0x888888})); s.rotation.z=-Math.PI/2; s.position.set(0.2,0,0); lureGroup.add(s); const w=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.025,0.5,6),new THREE.MeshLambertMaterial({color:col})); w.rotation.z=Math.PI/2; w.position.set(-0.1,0,0); lureGroup.add(w); break; }
+        case 'neko': { const w=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.035,0.55,6),new THREE.MeshLambertMaterial({color:col})); lureGroup.add(w); const n=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,0.08,4),new THREE.MeshLambertMaterial({color:0x666666})); n.position.set(0,-0.3,0); lureGroup.add(n); break; }
+        case 'downshot': { const l=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.4,3),new THREE.MeshLambertMaterial({color:0xaaaaaa})); l.position.set(0,-0.15,0); lureGroup.add(l); const s=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,6),new THREE.MeshLambertMaterial({color:0x555555})); s.position.set(0,-0.4,0); lureGroup.add(s); const w=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.02,0.3,6),new THREE.MeshLambertMaterial({color:col})); w.rotation.z=Math.PI/2; w.position.set(0,0.05,0); lureGroup.add(w); break; }
+    }
+    // Hook
+    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.2), new THREE.MeshLambertMaterial({color:0x888888}));
+    hook.position.set(0,-0.15,0); lureGroup.add(hook);
+
+    lureGroup.position.set(0, -config.layer, 0);
+    gameState.lure = lureGroup;
+    gameState.scene.add(lureGroup);
+}
+
+function createBass() {
+    gameState.bass = [];
+    bassStates = [];
+    // Pick species for each swimming fish from spot distribution
+    const dist = spotFish[gameState.selectedSpot] || { largemouth: 100 };
+    const speciesKeys = Object.keys(dist);
+
+    for (let i=0;i<4;i++) {
+        const sk = speciesKeys[i % speciesKeys.length];
+        const g = buildFish3D(sk);
+
+        // Random size variation for swimming fish
+        const scale = 0.7 + Math.random() * 0.6;
+        g.scale.setScalar(scale);
+
+        const angle=(i/4)*Math.PI*2;
+        g.position.set(Math.cos(angle)*(8+Math.random()*5),-6-Math.random()*2,Math.sin(angle)*(8+Math.random()*5));
+        g.rotation.y=angle+Math.PI;
+        g.userData.originalPosition = g.position.clone();
+        g.userData.originalRotation = g.rotation.clone();
+        gameState.bass.push(g);
+        gameState.scene.add(g);
+        bassStates.push({interest:0,following:false,biting:false,targetPosition:g.position.clone(),speed:0.02+Math.random()*0.02,biteProbability:0,tailSwingPhase:Math.random()*Math.PI*2});
+    }
+}
+
+// ========== Event Listeners ==========
+function setupEventListeners() {
+    const canvas = document.getElementById('threeCanvas');
+    canvas.addEventListener('mousemove', e => { const r=canvas.getBoundingClientRect(); mousePos.x=((e.clientX-r.left)/r.width)*2-1; mousePos.y=-((e.clientY-r.top)/r.height)*2+1; });
+    canvas.addEventListener('mousedown', () => { isMouseDown=true; lastClickTime=Date.now(); handleSnagTap(); playSound('reel',300,0.2); });
+    canvas.addEventListener('mouseup', () => { isMouseDown=false; });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); const r=canvas.getBoundingClientRect(); const t=e.touches[0]; mousePos.x=((t.clientX-r.left)/r.width)*2-1; mousePos.y=-((t.clientY-r.top)/r.height)*2+1; });
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); isMouseDown=true; lastClickTime=Date.now(); handleSnagTap(); playSound('reel',300,0.2); });
+    canvas.addEventListener('touchend', e => { e.preventDefault(); isMouseDown=false; });
+    window.addEventListener('resize', () => { if(gameState.camera){gameState.camera.aspect=window.innerWidth/window.innerHeight; gameState.camera.updateProjectionMatrix(); gameState.renderer.setSize(window.innerWidth,window.innerHeight);} });
+}
+
+// ========== Snag Mechanic ==========
+function handleSnagTap() {
+    if (!gameState.isSnagged) return;
+    gameState.snagProgress += 12;
+    document.getElementById('snagFill').style.width = Math.min(100, gameState.snagProgress) + '%';
+    if (gameState.snagProgress >= 100) {
+        gameState.isSnagged = false;
+        document.getElementById('snagOverlay').classList.add('hidden');
+        gameState.snagProgress = 0;
+    }
+}
+
+function trySnag() {
+    if (gameState.isSnagged) return;
+    const spot = spotConfig[gameState.selectedSpot];
+    if (spot.snagChance > 0 && Math.random() < spot.snagChance) {
+        gameState.isSnagged = true;
+        gameState.snagProgress = 0;
+        document.getElementById('snagFill').style.width = '0%';
+        document.getElementById('snagOverlay').classList.remove('hidden');
+        playSound('splash', 200, 0.5);
+    }
+}
+
+// ========== Game Loop ==========
+function animate() {
+    if (gameState.currentScreen !== 'game') return;
+    gameTime += 0.016;
+
+    // Sluice flow variation
+    const spot = spotConfig[gameState.selectedSpot];
+    if (spot.sluiceFlow) {
+        sluiceTimer += 0.016;
+        if (sluiceTimer > 5 + Math.random() * 10) {
+            spot.current.x = 0.01 + Math.random() * 0.04;
+            sluiceTimer = 0;
+        }
+    }
+
+    if (!gameState.isSnagged) {
+        updateLure();
+        updateBassAI();
+        trySnag();
+    }
+    updateBassAnimation();
+    updateParticles();
+    updateWaterSurface();
+
+    const lp = gameState.lure.position;
+    gameState.camera.position.set(lp.x-3, lp.y+1, lp.z+2);
+    gameState.camera.lookAt(lp);
+    document.getElementById('currentDepth').textContent = Math.abs(lp.y).toFixed(1) + 'm';
+    gameState.renderer.render(gameState.scene, gameState.camera);
+    gameState.animationId = requestAnimationFrame(animate);
+}
+
+function updateLure() {
+    if (!gameState.lure) return;
+    const config = lureConfig[gameState.selectedLure];
+    const t = gameTime;
+    const spot = spotConfig[gameState.selectedSpot];
+
+    // Movement (affected by current)
+    gameState.lure.position.x += mousePos.x * 0.05;
+    gameState.lure.position.z += mousePos.y * 0.05;
+    if (spot.current) {
+        gameState.lure.position.x += spot.current.x * 0.3;
+        gameState.lure.position.z += (spot.current.z || 0) * 0.3;
+    }
+
+    // Cast range limit from style
+    const style = styleConfig[gameState.selectedStyle];
+    const range = style.castRange;
+
+    switch (gameState.selectedLure) {
+        case 'pencilbait': gameState.lure.position.y=-0.15+Math.sin(t*8)*0.05; gameState.lure.rotation.y=Math.sin(t*6)*0.6; if(isMouseDown)gameState.lure.rotation.y=Math.sin(t*12)*0.9; break;
+        case 'popper': gameState.lure.position.y=-0.1; if(isMouseDown){gameState.lure.position.y+=Math.sin(t*20)*0.15;gameState.lure.rotation.x=Math.sin(t*15)*0.3;playSound('pop',600,0.08);} break;
+        case 'darter': gameState.lure.position.y=-0.5+Math.sin(t*3)*0.3; gameState.lure.rotation.y=Math.sin(t*2)*0.8; if(isMouseDown)gameState.lure.position.y=-1.0+Math.sin(t*5)*0.4; break;
+        case 'frog': gameState.lure.position.y=-0.05; if(isMouseDown){gameState.lure.position.y=-0.05+Math.abs(Math.sin(t*8))*0.1;gameState.lure.position.x+=Math.sin(t*4)*0.01;} break;
+        case 'buzzbait': gameState.lure.position.y=-0.2+Math.sin(t*12)*0.1; gameState.lure.children[1].rotation.z+=0.4; if(isMouseDown)playSound('splash',150,0.08); break;
+        case 'crankbait': gameState.lure.position.y=-config.layer+Math.sin(t*5)*0.3; gameState.lure.rotation.z=Math.sin(t*8)*0.2; break;
+        case 'vibration': gameState.lure.position.y=-config.layer; gameState.lure.rotation.x=Math.sin(t*30)*0.1; gameState.lure.rotation.y=Math.sin(t*25)*0.1; break;
+        case 'spinnerbait': gameState.lure.position.y=-config.layer+Math.sin(t*3)*0.2; if(gameState.lure.children[2])gameState.lure.children[2].rotation.z+=0.3; break;
+        case 'minnow': gameState.lure.position.y=-config.layer+Math.sin(t*4)*0.15; if(isMouseDown){gameState.lure.rotation.y=Math.sin(t*15)*0.4;gameState.lure.position.x+=Math.sin(t*10)*0.02;}else{gameState.lure.rotation.y*=0.95;} break;
+        case 'jig': if(isMouseDown){gameState.lure.position.y=-config.layer+Math.sin(t*15)*0.5;}else{gameState.lure.position.y=Math.max(gameState.lure.position.y-0.02,-config.layer-1);} break;
+        case 'texasrig': if(isMouseDown){gameState.lure.position.y=-config.layer+Math.sin(t*8)*0.3;gameState.lure.rotation.x=Math.sin(t*5)*0.15;}else{gameState.lure.position.y=Math.max(gameState.lure.position.y-0.015,-config.layer-0.5);} break;
+        case 'nekorig': gameState.lure.position.y=-config.layer; gameState.lure.rotation.x=0.3+Math.sin(t*20)*0.15; if(isMouseDown)gameState.lure.rotation.x=0.4+Math.sin(t*35)*0.25; break;
+        case 'downshot': gameState.lure.position.y=-config.layer; if(isMouseDown){gameState.lure.rotation.x=Math.sin(t*25)*0.2;gameState.lure.rotation.z=Math.sin(t*30)*0.1;}else{gameState.lure.rotation.x*=0.95;gameState.lure.rotation.z*=0.95;} break;
+    }
+
+    gameState.lure.position.x = Math.max(-range, Math.min(range, gameState.lure.position.x));
+    gameState.lure.position.z = Math.max(-range, Math.min(range, gameState.lure.position.z));
+}
+
+function updateBassAI() {
+    const lurePos = gameState.lure.position;
+    const config = lureConfig[gameState.selectedLure];
+    const spot = spotConfig[gameState.selectedSpot];
+    const style = styleConfig[gameState.selectedStyle];
+    const biteMod = spot.biteModifiers[gameState.selectedLure] || 1.0;
+    const styleBite = style.biteBonus;
+
+    gameState.bass.forEach((bass, index) => {
+        const state = bassStates[index];
+        const distance = bass.position.distanceTo(lurePos);
+
+        if (distance < 10) {
+            state.interest = Math.min(1, state.interest + 0.01);
+            if (isMouseDown) state.interest += 0.02;
+            if (distance < 3 && !state.following) {
+                state.following = true;
+                state.biteProbability = config.biteRate * biteMod * styleBite;
+            }
+        } else {
+            state.interest = Math.max(0, state.interest - 0.005);
+            if (distance > 15) { state.following = false; state.biteProbability = 0; }
+        }
+
+        if (state.following && distance > 1.5) {
+            state.targetPosition.lerp(lurePos, 0.02);
+            bass.position.lerp(state.targetPosition, state.speed);
+            bass.lookAt(lurePos);
+            if (distance < 2 && Math.random() < state.biteProbability * 0.001) {
+                triggerBite(index);
+            }
+        }
+    });
+}
+
+function updateBassAnimation() {
+    gameState.bass.forEach((bass, index) => {
+        const state = bassStates[index]; const ud = bass.userData;
+        state.tailSwingPhase += 0.1;
+        ud.tail.rotation.y = Math.sin(state.tailSwingPhase) * (state.following ? 0.5 : 0.3);
+        if (state.biting) { ud.mouth.scale.y=1.5; ud.leftGill.scale.x=1.2; ud.rightGill.scale.x=1.2; }
+        else { ud.mouth.scale.y=THREE.MathUtils.lerp(ud.mouth.scale.y,0.1,0.1); ud.leftGill.scale.x=THREE.MathUtils.lerp(ud.leftGill.scale.x,0.5,0.1); ud.rightGill.scale.x=THREE.MathUtils.lerp(ud.rightGill.scale.x,0.5,0.1); }
+    });
+}
+
+function updateParticles() {
+    if (!gameState.particles) return;
+    const pos = gameState.particles.geometry.attributes.position.array;
+    const spot = spotConfig[gameState.selectedSpot];
+    for (let i=0;i<pos.length;i+=3) {
+        pos[i+1]+=0.01; if(pos[i+1]>0)pos[i+1]=-15;
+        if(spot.current){pos[i]+=spot.current.x;pos[i+2]+=(spot.current.z||0);if(pos[i]>50)pos[i]=-50;if(pos[i+2]>50)pos[i+2]=-50;}
+    }
+    gameState.particles.geometry.attributes.position.needsUpdate = true;
+}
+
+function updateWaterSurface() {
+    if (!gameState.waterSurface) return;
+    const verts = gameState.waterSurface.geometry.attributes.position.array;
+    for (let i=0;i<verts.length;i+=3) { verts[i+2]=Math.sin(verts[i]*0.1+verts[i+1]*0.1+gameTime)*0.1; }
+    gameState.waterSurface.geometry.attributes.position.needsUpdate = true;
+}
+
+// ========== Bite / Fight / Result ==========
+function triggerBite(bassIndex) {
+    bassStates[bassIndex].biting = true;
+    const hitText = document.getElementById('hitText');
+    hitText.style.display = 'block';
+    setTimeout(() => hitText.style.display = 'none', 1000);
+    document.body.style.animation = 'shake 0.5s ease-in-out';
+    setTimeout(() => document.body.style.animation = '', 500);
+    playSound('bite', 800, 0.5);
+    setTimeout(() => startFight(bassIndex), 1500);
+}
+
+function startFight(bassIndex) {
+    gameState.currentScreen = 'fight';
+    showScreen('fightScreen');
+    // Keep game canvas visible behind fight UI? No, fight has its own canvas.
+    if (gameState.animationId) cancelAnimationFrame(gameState.animationId);
+    runFightGame(bassIndex);
+}
+
+function runFightGame(bassIndex) {
+    let tension = 50, bassHealth = 100, mouseY = 0;
+    const spot = spotConfig[gameState.selectedSpot];
+    const fightMul = spot.fightStrength || 1.0; // mountain bass fight harder
+
+    function onMove(e) {
+        mouseY = e.type==='mousemove' ? e.clientY : e.touches[0].clientY;
+        const ny = (mouseY / window.innerHeight - 0.5) * 100;
+        tension = Math.max(0, Math.min(100, tension + ny * 0.1));
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove);
+
+    function loop() {
+        if (gameState.currentScreen !== 'fight') { cleanup(); return; }
+        if (tension > 80) { if(Math.random()<0.02){alert('ラインブレイク！');cleanup();backToGame();return;} bassHealth -= 2/fightMul; }
+        else if (tension < 20) { if(Math.random()<0.02){alert('バレた！');cleanup();backToGame();return;} }
+        else { bassHealth -= 0.5/fightMul; }
+        bassHealth -= Math.random()*0.5/fightMul;
+        tension += (Math.random()-0.5) * 5 * fightMul;
+        tension = Math.max(0, Math.min(100, tension));
+        document.getElementById('tensionFill').style.height = tension+'%';
+        document.getElementById('healthFill').style.height = Math.max(0,bassHealth)+'%';
+        document.getElementById('tensionFill').style.backgroundColor = tension>80?'#FF5722':tension<20?'#FFC107':'#4CAF50';
+        if (bassHealth <= 0) { cleanup(); showResult(bassIndex); return; }
+        setTimeout(loop, 50);
+    }
+    function cleanup() { document.removeEventListener('mousemove', onMove); document.removeEventListener('touchmove', onMove); }
+    loop();
+}
+
+function showResult(bassIndex) {
+    gameState.currentScreen = 'result';
+    showScreen('resultScreen');
+
+    // Determine species
+    const speciesKey = pickFishSpecies();
+    const sp = fishSpecies[speciesKey];
+    const { cm, kg, sizeTag } = generateFishSize(speciesKey);
+
+    // Species name display
+    const speciesEl = document.getElementById('fishSpecies');
+    speciesEl.textContent = sp.icon + ' ' + sp.name;
+    speciesEl.className = 'fish-species' + (sp.rare ? ' rare' : '');
+
+    // Size comment
+    const comment = getSizeComment(cm, sizeTag, speciesKey);
+    const commentEl = document.getElementById('sizeComment');
+    commentEl.textContent = comment;
+    commentEl.style.color = sizeTag === 'monster' ? '#ff4444' : sizeTag === 'bean' ? '#88ccff' : '#ffffff';
+
+    document.getElementById('fishSize').textContent = cm.toFixed(1) + 'cm';
+    document.getElementById('fishWeight').textContent = kg.toFixed(2) + 'kg';
+
+    displayResult3D(bassIndex, speciesKey, cm);
+}
+
+function buildFish3D(speciesKey) {
+    const sp = fishSpecies[speciesKey];
+    const g = new THREE.Group();
+    const bs = sp.bodyScale;
+
+    // Body
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.3*bs[1], 1.5*bs[0], 8, 16), new THREE.MeshLambertMaterial({ color: sp.bodyColor }));
+    body.rotation.z = Math.PI/2; g.add(body);
+
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.35*bs[1], 8, 6), new THREE.MeshLambertMaterial({ color: sp.headColor }));
+    head.position.set(0.8*bs[0], 0, 0); head.scale.set(1.2, 1, 0.8); g.add(head);
+
+    // Mouth
+    const ms = sp.mouthScale;
+    const mouth = new THREE.Mesh(new THREE.CylinderGeometry(0.15*ms, 0.25*ms, 0.3, 8), new THREE.MeshLambertMaterial({ color: sp.bellyColor }));
+    mouth.position.set(1.1*bs[0], 0, 0); mouth.rotation.z = Math.PI/2; mouth.scale.y = 0.1; g.add(mouth);
+
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.08, 8, 6);
+    const eyeMat = new THREE.MeshLambertMaterial({ color: sp.eyeColor });
+    const le = new THREE.Mesh(eyeGeo, eyeMat); le.position.set(0.9*bs[0], 0.1, 0.2*bs[2]); g.add(le);
+    const re = le.clone(); re.position.set(0.9*bs[0], 0.1, -0.2*bs[2]); g.add(re);
+
+    // Tail
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.4*bs[1], 0.8, 8), new THREE.MeshLambertMaterial({ color: sp.tailColor }));
+    tail.position.set(-1.2*bs[0], 0, 0); tail.rotation.z = Math.PI/2; g.add(tail);
+
+    // Gills
+    const gillMat = new THREE.MeshLambertMaterial({ color: 0xff6b6b });
+    const lg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3*bs[1], 0.2*bs[2]), gillMat);
+    lg.position.set(0.6*bs[0], 0, 0.25*bs[2]); lg.scale.x = 0.5; g.add(lg);
+    const rg = lg.clone(); rg.position.set(0.6*bs[0], 0, -0.25*bs[2]); g.add(rg);
+
+    // Belly
+    const belly = new THREE.Mesh(new THREE.CapsuleGeometry(0.2*bs[1], 1.0*bs[0], 4, 8), new THREE.MeshLambertMaterial({ color: sp.bellyColor }));
+    belly.rotation.z = Math.PI/2; belly.position.y = -0.15*bs[1]; g.add(belly);
+
+    // Whiskers for catfish
+    if (sp.hasWhiskers) {
+        for (let i = -1; i <= 1; i += 2) {
+            for (let j = 0; j < 2; j++) {
+                const w = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.005, 0.6, 3), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+                w.position.set(1.0*bs[0], -0.05 + j*0.08, i*0.15);
+                w.rotation.z = Math.PI/2 + i*0.3; w.rotation.x = j*0.2;
+                g.add(w);
+            }
+        }
+    }
+
+    // Pink stripe for trout
+    if (sp.hasPinkStripe) {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.4*bs[0], 0.05, 0.35*bs[2]), new THREE.MeshLambertMaterial({ color: 0xee6688 }));
+        stripe.position.set(0, 0, 0); g.add(stripe);
+    }
+
+    // Eye spot for peacock bass
+    if (sp.hasEyeSpot) {
+        const spot = new THREE.Mesh(new THREE.CircleGeometry(0.12, 8), new THREE.MeshLambertMaterial({ color: 0x111111, side: THREE.DoubleSide }));
+        spot.position.set(-0.8*bs[0], 0, 0.28*bs[2]); spot.rotation.y = Math.PI/2; g.add(spot);
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.08, 0.14, 8), new THREE.MeshLambertMaterial({ color: 0xffdd00, side: THREE.DoubleSide }));
+        ring.position.set(-0.8*bs[0], 0, 0.29*bs[2]); ring.rotation.y = Math.PI/2; g.add(ring);
+        // Other side
+        const spot2 = spot.clone(); spot2.position.z = -0.28*bs[2]; g.add(spot2);
+        const ring2 = ring.clone(); ring2.position.z = -0.29*bs[2]; g.add(ring2);
+    }
+
+    g.userData = { mouth, leftGill: lg, rightGill: rg, tail };
+    return g;
+}
+
+function displayResult3D(bassIndex, speciesKey, cm) {
+    const canvas = document.getElementById('resultCanvas');
+    const rr = new THREE.WebGLRenderer({ canvas, antialias: true });
+    rr.setSize(300, 200); rr.setClearColor(0x87ceeb);
+    const rs = new THREE.Scene();
+    const rc = new THREE.PerspectiveCamera(50, 300/200, 0.1, 1000); rc.position.set(0, 0, 5);
+
+    const sp = fishSpecies[speciesKey];
+    const fish = buildFish3D(speciesKey);
+    fish.position.set(0, 0, 0); fish.rotation.set(0, 0, 0);
+
+    // Scale based on cm — normalize around 40cm=1.0
+    const sizeScale = Math.max(0.3, Math.min(3.0, cm / 40));
+    fish.scale.setScalar(sizeScale);
+    rs.add(fish);
+
+    // Adjust camera for very large/small fish
+    rc.position.set(0, 0, 3 + sizeScale * 2);
+
+    rs.add(new THREE.DirectionalLight(0xffffff, 1).translateX(1).translateY(1).translateZ(1));
+    rs.add(new THREE.AmbientLight(0x404040, 0.5));
+    let animId;
+    (function rot() { fish.rotation.y += 0.02; rr.render(rs, rc); animId = requestAnimationFrame(rot); })();
+    // Store for cleanup
+    gameState._resultAnimId = animId;
+}
+
+function continueFishing() {
+    gameState.currentScreen = 'game';
+    showScreen('gameScreen');
+    bassStates.forEach(s => { s.interest=0; s.following=false; s.biting=false; s.biteProbability=0; });
+    gameState.lure.position.set(0, -lureConfig[gameState.selectedLure].layer, 0);
+    animate();
+}
+
+function backToGame() {
+    gameState.currentScreen = 'game';
+    showScreen('gameScreen');
+    bassStates.forEach(s => { s.interest=0; s.following=false; s.biting=false; s.biteProbability=0; });
+    animate();
+}
+
+// ========== Start Fishing ==========
+function startFishing() {
+    gameState.currentScreen = 'game';
+    showScreen('gameScreen');
+    const config = lureConfig[gameState.selectedLure];
+    const spot = spotConfig[gameState.selectedSpot];
+    const style = styleConfig[gameState.selectedStyle];
+    document.getElementById('currentLure').textContent = config.name;
+    document.getElementById('uiSpot').textContent = spot.name;
+    document.getElementById('uiStyle').textContent = style.name;
+    gameState.isSnagged = false;
+    document.getElementById('snagOverlay').classList.add('hidden');
+    gameTime = 0;
+    sluiceTimer = 0;
+    initThreeJS();
+}
+
+// ========== Init ==========
+document.addEventListener('DOMContentLoaded', function() { initAudio(); });
+
+// Shake animation
+const shakeStyle = document.createElement('style');
+shakeStyle.textContent = `@keyframes shake { 0%,100%{transform:translateX(0)} 10%,30%,50%,70%,90%{transform:translateX(-2px)} 20%,40%,60%,80%{transform:translateX(2px)} }`;
+document.head.appendChild(shakeStyle);
+</script>
+</body>
+</html>
