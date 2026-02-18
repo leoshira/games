@@ -732,26 +732,30 @@ function playSound(type, frequency=440, duration=0.3) {
 
 // ========== Three.js Setup ==========
 function initThreeJS() {
+  try {
     const canvas = document.getElementById('threeCanvas');
+    if (!canvas) { alert('Canvas not found'); return; }
     const spot = spotConfig[gameState.selectedSpot];
+    if (!spot) { alert('Spot config not found: ' + gameState.selectedSpot); return; }
 
     gameState.scene = new THREE.Scene();
     gameState.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
     gameState.camera.position.set(0, -2, 5);
     gameState.camera.lookAt(0, -2, 0);
 
-    gameState.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    gameState.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Mobile-friendly: no antialias, lower pixel ratio
+    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+    gameState.renderer = new THREE.WebGLRenderer({ canvas, antialias: !isMobile, alpha: false, powerPreference: 'high-performance' });
+    gameState.renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
     gameState.renderer.setSize(window.innerWidth, window.innerHeight);
     gameState.renderer.setClearColor(spot.clearColor);
     gameState.scene.fog = new THREE.Fog(spot.fogColor, spot.fogNear, spot.fogFar);
 
     const ambient = new THREE.AmbientLight(0x4a90e2, 0.4);
     gameState.scene.add(ambient);
-    // Mountain spot gets brighter light
     const dirIntensity = gameState.selectedSpot === 'mountain' ? 1.2 : 0.8;
     const dir = new THREE.DirectionalLight(0xffffff, dirIntensity);
-    dir.position.set(0, 10, 0); dir.castShadow = true;
+    dir.position.set(0, 10, 0);
     gameState.scene.add(dir);
 
     createWaterSurface();
@@ -762,11 +766,16 @@ function initThreeJS() {
     createBass();
     setupEventListeners();
     animate();
+  } catch(e) {
+    alert('3D Init Error: ' + e.message);
+    console.error(e);
+  }
 }
 
 function createWaterSurface() {
     const spot = spotConfig[gameState.selectedSpot];
-    const geo = new THREE.PlaneGeometry(100, 100, 64, 64);
+    const segs = /iPhone|iPad|Android/i.test(navigator.userAgent) ? 16 : 64;
+    const geo = new THREE.PlaneGeometry(100, 100, segs, segs);
     const mat = new THREE.MeshLambertMaterial({ color: spot.waterColor, transparent: true, opacity: spot.waterOpacity, side: THREE.DoubleSide });
     gameState.waterSurface = new THREE.Mesh(geo, mat);
     gameState.waterSurface.rotation.x = -Math.PI/2;
@@ -843,7 +852,7 @@ function createSpotObjects() {
 }
 
 function createParticles() {
-    const n = 1000;
+    const n = /iPhone|iPad|Android/i.test(navigator.userAgent) ? 200 : 1000;
     const geo = new THREE.BufferGeometry();
     const pos = new Float32Array(n*3);
     for (let i=0;i<n*3;i+=3) { pos[i]=(Math.random()-0.5)*100; pos[i+1]=Math.random()*-15; pos[i+2]=(Math.random()-0.5)*100; }
