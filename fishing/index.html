@@ -919,12 +919,29 @@ function createBass() {
 // ========== Event Listeners ==========
 function setupEventListeners() {
     const canvas = document.getElementById('threeCanvas');
+    let lastTouchX = null, lastTouchY = null;
+    // PC: mouse position relative to center drives lure direction
     canvas.addEventListener('mousemove', e => { const r=canvas.getBoundingClientRect(); mousePos.x=((e.clientX-r.left)/r.width)*2-1; mousePos.y=-((e.clientY-r.top)/r.height)*2+1; });
     canvas.addEventListener('mousedown', () => { isMouseDown=true; lastClickTime=Date.now(); handleSnagTap(); playSound('reel',300,0.2); });
     canvas.addEventListener('mouseup', () => { isMouseDown=false; });
-    canvas.addEventListener('touchmove', e => { e.preventDefault(); const r=canvas.getBoundingClientRect(); const t=e.touches[0]; mousePos.x=((t.clientX-r.left)/r.width)*2-1; mousePos.y=-((t.clientY-r.top)/r.height)*2+1; });
-    canvas.addEventListener('touchstart', e => { e.preventDefault(); isMouseDown=true; lastClickTime=Date.now(); handleSnagTap(); playSound('reel',300,0.2); });
-    canvas.addEventListener('touchend', e => { e.preventDefault(); isMouseDown=false; });
+    // Mobile: swipe delta drives lure direction, tap for action
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault(); isMouseDown=true; lastClickTime=Date.now();
+        const t=e.touches[0]; lastTouchX=t.clientX; lastTouchY=t.clientY;
+        handleSnagTap(); playSound('reel',300,0.2);
+    }, {passive:false});
+    canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const t=e.touches[0];
+        if (lastTouchX !== null) {
+            const dx = (t.clientX - lastTouchX) / 30;
+            const dy = (t.clientY - lastTouchY) / 30;
+            mousePos.x = Math.max(-1, Math.min(1, dx));
+            mousePos.y = Math.max(-1, Math.min(1, -dy));
+        }
+        lastTouchX = t.clientX; lastTouchY = t.clientY;
+    }, {passive:false});
+    canvas.addEventListener('touchend', e => { e.preventDefault(); isMouseDown=false; mousePos.x=0; mousePos.y=0; lastTouchX=null; lastTouchY=null; });
     window.addEventListener('resize', () => { if(gameState.camera){gameState.camera.aspect=window.innerWidth/window.innerHeight; gameState.camera.updateProjectionMatrix(); gameState.renderer.setSize(window.innerWidth,window.innerHeight);} });
 }
 
@@ -991,8 +1008,8 @@ function updateLure() {
     const spot = spotConfig[gameState.selectedSpot];
 
     // Movement (affected by current)
-    gameState.lure.position.x += mousePos.x * 0.05;
-    gameState.lure.position.z += mousePos.y * 0.05;
+    gameState.lure.position.x += mousePos.x * 0.12;
+    gameState.lure.position.z += mousePos.y * 0.12;
     if (spot.current) {
         gameState.lure.position.x += spot.current.x * 0.3;
         gameState.lure.position.z += (spot.current.z || 0) * 0.3;
